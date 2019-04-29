@@ -1,0 +1,260 @@
+#include &lt;ESP8266WiFi.h&gt;
+#include &lt;PubSubClient.h&gt;
+#include &lt;IRremoteESP8266.h&gt;
+#include &lt;IRsend.h&gt;
+#include &lt;ir_Daikin.h&gt;
+#include &lt;EEPROM.h&gt;
+
+IRDaikinESP dakinir(D4);
+ 
+const char* ssid     = &quot;******&quot;;
+const char* password = &quot;*******&quot;;
+const char* mqttServer = &quot;***************&quot;;
+const int mqttPort = 1883;
+const char* mqttUser = &quot;******&quot;;
+const char* mqttPassword = &quot;***************&quot;;
+
+#define POWER &quot;bed_room/ac/power/set&quot;
+#define MODE &quot;bed_room/ac/mode/set&quot;
+#define TEMP &quot;bed_room/ac/temperature/set&quot;
+#define FAN &quot;bed_room/ac/fan/set&quot;
+#define SWING &quot;bed_room/ac/swing/set&quot;
+
+#define AC_OFF      0
+#define AC_COOL     DAIKIN_COOL
+#define AC_FAN_ONLY DAIKIN_FAN
+#define AC_DRY      DAIKIN_DRY
+#define FAN_LOW     DAIKIN_FAN_MIN
+#define FAN_MID     3
+#define FAN_HIGH    DAIKIN_FAN_MAX
+#define FAN_AUTO    DAIKIN_FAN_AUTO
+
+#define SWING_OFF 0
+#define SWING_ON  1
+ 
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+bool mode = 0;
+uint8_t temp = 0;
+uint8_t fanMode = 0;
+uint8_t swingMode = 0;
+ 
+void setup() {
+  Serial.begin(115200);
+  EEPROM.begin(512);
+
+  mode = (0);
+  temp = (1);
+  fanMode = (2);
+  swingMode = (3);
+
+  if((mode == 0xFF) &amp;&amp; (temp == 0xFF) &amp;&amp; (fanMode == 0xFF) &amp;&amp; (swingMode == 0xFF))
+  {
+    mode = AC_OFF;
+    EEPROM.write(0, mode);
+    temp = 28;
+    EEPROM.write(1, temp);
+    fanMode = FAN_AUTO;
+    EEPROM.write(2, fanMode);
+    swingMode = SWING_OFF;
+    EEPROM.write(3, swingMode);
+    EEPROM.commit();
+  }
+
+  Serial.print(&quot;mode: &quot;);Serial.println(mode);
+  Serial.print(&quot;temp: &quot;);Serial.println(temp);
+  Serial.print(&quot;fanMode: &quot;);Serial.println(fanMode);
+  Serial.print(&quot;swingMode: &quot;);Serial.println(swingMode);
+  
+  dakinir.begin();
+  
+ 
+  WiFi.begin(ssid, password);
+ 
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.println(&quot;Connecting to WiFi..&quot;);
+  }
+  Serial.println(&quot;Connected to the WiFi network&quot;);
+ 
+  client.setServer(mqttServer, mqttPort);
+  client.setCallback(callback);
+ 
+  while (!client.connected()) {
+    Serial.println(&quot;Connecting to MQTT...&quot;);
+ 
+    if (client.connect(&quot;ESP8266Client&quot;, mqttUser, mqttPassword )) {
+ 
+      Serial.println(&quot;connected&quot;);  
+ 
+    } else {
+ 
+      Serial.print(&quot;failed with state &quot;);
+      Serial.print(client.state());
+      delay(2000);
+ 
+    }
+  }
+ 
+  client.subscribe(POWER);
+  client.subscribe(MODE);
+  client.subscribe(TEMP);
+  client.subscribe(FAN);
+  client.subscribe(SWING);
+ 
+}
+ 
+void callback(char* topic, byte* payload, unsigned int length) {
+
+  char buffer[length];
+  memset(buffer,NULL,15);
+ 
+  Serial.print(&quot;Message arrived in topic: &quot;);
+  Serial.println(topic);
+ 
+  Serial.print(&quot;Message:&quot;);
+  for (int i = 0; i &lt; length; i++) {
+    );
+    buffer[i] = (char)payload[i];
+  }
+  Serial.println();
+
+  if(!strcmp(topic,MODE))
+  {
+    if(!strcmp(buffer,&quot;off&quot;))
+    {
+      Serial.println(&quot;off&quot;);
+      mode = AC_OFF;
+      EEPROM.write(0, mode);
+    }
+    else if(!strcmp(buffer,&quot;cool&quot;))
+    {
+      Serial.println(&quot;cool&quot;);
+      mode = AC_COOL;
+      EEPROM.write(0, mode);
+    }
+    else if(!strcmp(buffer,&quot;dry&quot;))
+    {
+      Serial.println(&quot;dry&quot;);
+      mode = AC_DRY;
+      EEPROM.write(0, mode);
+    }
+    else if(!strcmp(buffer,&quot;fan_only&quot;))
+    {
+      Serial.println(&quot;fan only&quot;);
+      mode = AC_FAN_ONLY;
+      EEPROM.write(0, mode);
+    }
+  }
+  else if(!strcmp(topic,TEMP))
+  {
+    temp = (payload[0] - 48)*10 + (payload[1] - 48);
+    Serial.println(temp);
+    EEPROM.write(1, temp);
+  }
+  else if(!strcmp(topic,FAN))
+  {
+    if(!strcmp(buffer,&quot;low&quot;))
+    {
+      Serial.println(&quot;low&quot;);
+      fanMode = FAN_LOW;
+      EEPROM.write(2, fanMode);
+    }
+    else if(!strcmp(buffer,&quot;medium&quot;))
+    {
+      Serial.println(&quot;mid&quot;);
+      fanMode = FAN_MID;
+      EEPROM.write(2, fanMode);
+    }
+    else if(!strcmp(buffer,&quot;high&quot;))
+    {
+      Serial.println(&quot;high&quot;);
+      fanMode = FAN_HIGH;
+      EEPROM.write(2, fanMode);
+    }
+    else if(!strcmp(buffer,&quot;auto&quot;))
+    {
+      Serial.println(&quot;auto&quot;);
+      fanMode = FAN_AUTO;
+      EEPROM.write(2, fanMode);
+    }
+  }
+  else if(!strcmp(topic,SWING))
+  {
+    if(!strcmp(buffer,&quot;off&quot;))
+    {
+      Serial.println(&quot;off&quot;);
+      swingMode = SWING_OFF;
+      EEPROM.write(3, swingMode);
+    }
+    else if(!strcmp(buffer,&quot;on&quot;))
+    {
+      Serial.println(&quot;on&quot;);
+      swingMode = SWING_ON;
+      EEPROM.write(3, swingMode);
+    }
+  }
+  if(mode == AC_OFF)
+  {
+    dakinir.off();
+  }
+  else
+  {
+    dakinir.on();
+    dakinir.setFan(fanMode);
+    dakinir.setMode(mode);
+    dakinir.setTemp(temp);
+    if(swingMode == SWING_OFF)
+    {
+      dakinir.setSwingVertical(0);
+      dakinir.setSwingHorizontal(0);
+    }
+    else
+    {
+      dakinir.setSwingVertical(1);
+      dakinir.setSwingHorizontal(1);
+    }
+  }
+  dakinir.send();
+  EEPROM.commit();
+  bool mode = 0;
+  int temp = 0;
+  int fanMode = 0;
+  int swingMode = 0;
+  Serial.println();
+  Serial.println(&quot;-----------------------&quot;);
+ 
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print(&quot;Attempting MQTT connection...&quot;);
+    // Attempt to connect
+    if (client.connect(&quot;ESP8266Client&quot;)) {
+      Serial.println(&quot;connected&quot;);
+      // Once connected, publish an announcement...
+       &quot;hello world&quot;);
+      // ... and resubscribe
+      client.subscribe(POWER);
+      client.subscribe(MODE);
+      client.subscribe(TEMP);
+      client.subscribe(FAN);
+      client.subscribe(SWING);
+    } else {
+      Serial.print(&quot;failed, rc=&quot;);
+      Serial.print(client.state());
+      Serial.println(&quot; try again in 5 seconds&quot;);
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+ 
+void loop() {
+  client.loop();
+  if (!client.connected()) {
+    reconnect();
+  }
+}

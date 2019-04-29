@@ -1,0 +1,37 @@
+auto_air_conditioner:
+  alias: Good night
+  sequence:
+  - data:
+      entity_id: climate.dieu_hoa
+      operation_mode: cool
+    service: climate.set_operation_mode
+  - data:
+      entity_id: climate.dieu_hoa
+      temperature: 26
+    service: climate.set_temperature
+  - data:
+      entity_id: climate.dieu_hoa
+      swing_mode: 'on'
+    service: climate.set_swing_mode
+  - data:
+      entity_id: climate.dieu_hoa
+      fan_mode: high
+    service: climate.set_fan_mode
+  - delay: 00:30:00
+  - data:
+      entity_id: climate.dieu_hoa
+      temperature: 30
+    service: climate.set_temperature
+  - data:
+      entity_id: climate.dieu_hoa
+      swing_mode: 'off'
+    service: climate.set_swing_mode
+  - data:
+      entity_id: climate.dieu_hoa
+      fan_mode: auto
+    service: climate.set_fan_mode
+  - delay: 01:00:00
+  - data:
+      entity_id: climate.dieu_hoa
+      operation_mode: "off"
+    service: climate.set_operation_mode
