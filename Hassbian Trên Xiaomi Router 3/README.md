@@ -5,6 +5,10 @@
 - Bài viết trên [MIUI VN](https://miui.vn/forum/threads/padavan-custom-firmware-qos-iptv-transmission-for-xioami-router-gen3-gen3g-mini-nano.24161/)
 - Facebook chủ repo github: [Đặng Phúc](https://www.facebook.com/hoangphuchotboy)
 
+# Ảnh Demo
+![demo](https://raw.githubusercontent.com/phuchptty/smarthome-viet-public-database/master/Hassbian%20Tr%C3%AAn%20Xiaomi%20Router%203/screenShot.jpg)
+Demo của bạn [Bùi Sỹ Hải Đăng](https://www.facebook.com/www.quangminh.vn)
+
 # Hướng Dẫn
 
  1. Up rom padavan theo hướng dẫn ở [bài viết này](https://miui.vn/forum/threads/padavan-custom-firmware-qos-iptv-transmission-for-xioami-router-gen3-gen3g-mini-nano.24161/)
